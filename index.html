@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OpenOdio" />
+  <meta name="theme-color" content="#1db954" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>OpenOdio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #181818;
+      --surface2: #282828;
+      --accent: #1db954;
+      --accent-dark: #158a3e;
+      --text: #ffffff;
+      --text-secondary: #b3b3b3;
+      --radius: 12px;
+      --radius-pill: 50px;
+      --danger: #ff4d4f;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+    body { position: relative; }
+    button, input {
+      font: inherit;
+      border: 0;
+      outline: none;
+      min-height: 44px;
+      transition: all 0.2s ease;
+    }
+    button { cursor: pointer; }
+    button:active { transform: scale(0.96); }
+    input {
+      width: 100%;
+      background: var(--surface2);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      flex-direction: column;
+      padding: 16px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      padding-bottom: 140px;
+    }
+    .screen::-webkit-scrollbar { display: none; }
+    .screen.active { display: flex; opacity: 1; }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .card:hover { background: var(--surface2); }
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border-radius: var(--radius-pill);
+      font-weight: 600;
+      padding: 12px 16px;
+    }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-secondary {
+      background: var(--surface2);
+      color: #fff;
+      border-radius: var(--radius-pill);
+      padding: 10px 16px;
+    }
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      min-height: 44px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface2);
+      color: #fff;
+      font-size: 18px;
+    }
+    .row { display: flex; align-items: center; }
+    .space { justify-content: space-between; }
+    .muted { color: var(--text-secondary); }
+    .hidden { display: none !important; }
+
+    #screen-login {
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .logo-wrap { text-align: center; margin-bottom: 20px; }
+    .logo-title { font-size: 36px; font-weight: 700; margin: 6px 0; }
+    .logo-subtitle { color: var(--accent); font-weight: 600; }
+    .auth-card {
+      width: 100%;
+      max-width: 400px;
+      background: #ffffff;
+      color: #121212;
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+      background: #ececec;
+      padding: 6px;
+      border-radius: 12px;
+    }
+    .auth-tab {
+      border-radius: 10px;
+      background: transparent;
+      color: #555;
+      font-weight: 600;
+    }
+    .auth-tab.active {
+      background: #111;
+      color: #fff;
+    }
+    .auth-card input {
+      background: #f3f3f3;
+      color: #111;
+      margin-bottom: 10px;
+    }
+    #auth-error { color: #d93025; min-height: 18px; margin-top: 8px; font-size: 14px; }
+
+    .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .app-brand { font-size: 24px; font-weight: 700; }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--surface2); display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    .search-wrap {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .heading { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+    .playlist-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 8px;
+    }
+    .playlist-row::-webkit-scrollbar { display: none; }
+    .playlist-card {
+      width: 160px; min-width: 160px; height: 160px;
+      border-radius: var(--radius);
+      padding: 12px;
+      background: var(--surface);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      overflow: hidden;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .playlist-card:hover { background: var(--surface2); transform: scale(1.02); }
+    .overlay-play {
+      position: absolute; top: 10px; right: 10px;
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: none; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .playlist-card:hover .overlay-play { display: flex; }
+    .empty-state {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .top-back { margin-bottom: 12px; }
+    .results-list { display: flex; flex-direction: column; gap: 8px; }
+    .result-item {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 56px 1fr 44px;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .result-item:hover { background: var(--surface2); }
+    .thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: #222; }
+    .song-title {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .song-artist {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .spinner {
+      width: 34px; height: 34px;
+      border: 3px solid #444;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 28px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #screen-player {
+      z-index: 30;
+      transform: translateY(100%);
+      opacity: 1;
+      transition: transform 0.2s ease;
+      padding-top: 8px;
+    }
+    #screen-player.open { display: flex; transform: translateY(0%); }
+    .now-label { text-align: center; margin: 6px 0 14px; color: var(--text-secondary); }
+    .artwork {
+      width: 280px; max-width: calc(100vw - 40px); height: 280px;
+      margin: 0 auto 14px;
+      border-radius: 16px;
+      object-fit: cover;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      background: var(--surface2);
+    }
+    .player-title {
+      text-align: center; font-weight: 700; font-size: 20px; margin: 8px 0 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .player-artist { text-align: center; color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; }
+    .player-actions { justify-content: center; gap: 10px; margin-bottom: 12px; }
+    .progress-wrap { width: 100%; margin-top: 8px; }
+    .progress-track {
+      width: 100%; height: 6px; border-radius: 99px;
+      background: #333; overflow: hidden; position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+    }
+    .time-row { margin-top: 8px; font-size: 12px; color: var(--text-secondary); justify-content: space-between; }
+    .controls {
+      margin: 16px 0;
+      justify-content: center;
+      gap: 16px;
+    }
+    .play-main {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 26px;
+      min-height: 64px;
+    }
+    .queue-label { text-align: center; color: var(--text-secondary); margin-top: auto; padding-bottom: 8px; }
+
+    #mini-player {
+      position: fixed;
+      left: 0; right: 0; bottom: 60px;
+      height: 64px;
+      background: var(--surface);
+      border-top: 1px solid var(--surface2);
+      display: none;
+      align-items: center;
+      z-index: 20;
+      padding: 8px 10px;
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .mini-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: #222; }
+    .mini-info { flex: 1; min-width: 0; margin: 0 8px; }
+    .mini-title, .mini-artist { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mini-title { font-size: 14px; font-weight: 600; }
+    .mini-artist { font-size: 12px; color: var(--text-secondary); }
+    .mini-controls { display: flex; gap: 6px; }
+
+    #screen-playlists .list { display: flex; flex-direction: column; gap: 8px; }
+    .playlist-list-item {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+    }
+    .playlist-list-item:hover { background: var(--surface2); }
+
+    .detail-actions { display: flex; gap: 8px; margin: 10px 0 12px; }
+    .song-list { display: flex; flex-direction: column; gap: 8px; }
+    .song-row {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 24px 56px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .song-row:hover { background: var(--surface2); }
+    .song-num { color: var(--text-secondary); font-size: 13px; text-align: center; }
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      animation: ripple 0.5s linear;
+      background: rgba(255, 255, 255, 0.25);
+      pointer-events: none;
+    }
+    @keyframes ripple {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    #screen-profile .profile-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 12px;
+    }
+    .version { margin-top: 18px; color: var(--text-secondary); text-align: center; }
+
+    #bottom-nav {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 60px;
+      background: var(--bg);
+      border-top: 1px solid var(--surface2);
+      display: none;
+      z-index: 15;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .tab-btn {
+      background: transparent;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60px;
+      font-size: 11px;
+      gap: 3px;
+    }
+    .tab-btn .ico { font-size: 17px; line-height: 1; }
+    .tab-btn.active { color: var(--accent); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: flex-end;
+      z-index: 40;
+    }
+    .modal-card {
+      width: 100%;
+      background: #141414;
+      border-radius: 16px 16px 0 0;
+      padding: 16px;
+      max-height: 70vh;
+      overflow-y: auto;
+      scrollbar-width: none;
+      transform: translateY(100%);
+      transition: transform 0.2s ease;
+    }
+    .modal-overlay.show .modal-card { transform: translateY(0); }
+    .modal-row {
+      width: 100%;
+      background: var(--surface);
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+    .inline-create { display: none; gap: 8px; margin-top: 6px; }
+    .inline-create input { flex: 1; margin: 0; }
+    #toast-container {
+      position: fixed;
+      left: 0; right: 0; bottom: 136px;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 60;
+    }
+    .toast {
+      background: var(--accent);
+      color: #fff;
+      border-radius: var(--radius-pill);
+      padding: 10px 14px;
+      font-weight: 600;
+      margin-top: 8px;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: toastInOut 2.5s ease forwards;
+    }
+    .toast.error { background: var(--danger); }
+    @keyframes toastInOut {
+      0%, 100% { opacity: 0; transform: translateY(8px); }
+      12%, 85% { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="screen-login" class="screen active">
+    <div class="logo-wrap">
+      <div style="font-size:42px;">🎵</div>
+      <div class="logo-title">OpenOdio</div>
+      <div class="logo-subtitle">Stream freely</div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login">Login</button>
+        <button class="auth-tab" id="tab-signup">Sign Up</button>
+      </div>
+      <input id="auth-email" type="email" placeholder="Email" autocomplete="email" />
+      <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button class="btn-primary" id="auth-submit">Login</button>
+      <div id="auth-error"></div>
+    </div>
+  </div>
+
+  <div id="screen-home" class="screen">
+    <div class="app-header">
+      <div class="app-brand">OpenOdio</div>
+      <div class="avatar" id="home-avatar">U</div>
+    </div>
+    <div class="search-wrap">
+      <input id="home-search-input" placeholder="Search songs, artists..." />
+      <button class="icon-btn" id="home-search-btn">🔍</button>
+    </div>
+    <div class="heading">Your Playlists</div>
+    <div id="home-playlist-row" class="playlist-row"></div>
+    <div id="home-playlist-empty" class="empty-state hidden">No playlists yet. Create your first one.</div>
+  </div>
+
+  <div id="screen-search" class="screen">
+    <div class="row top-back">
+      <button class="icon-btn" id="search-back">←</button>
+    </div>
+    <div class="search-wrap">
+      <input id="search-input" placeholder="Search songs, artists..." />
+      <button class="icon-btn" id="search-btn">🔍</button>
+    </div>
+    <div id="search-loading" class="spinner hidden"></div>
+    <div id="search-empty" class="empty-state hidden">No results found</div>
+    <div id="search-results" class="results-list"></div>
+  </div>
+
+  <div id="screen-player" class="screen">
+    <div class="row top-back">
+      <button class="icon-btn" id="player-collapse">↓</button>
+    </div>
+    <div class="now-label">Now Playing</div>
+    <img id="player-artwork" class="artwork" src="" alt="Artwork" />
+    <div id="player-title" class="player-title">Select a song</div>
+    <div id="player-artist" class="player-artist">Artist</div>
+    <div class="row player-actions">
+      <button class="icon-btn" id="player-heart">♡</button>
+      <button class="icon-btn" id="player-add">＋</button>
+    </div>
+    <div class="progress-wrap">
+      <div id="progress-bar" class="progress-track">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+      <div class="row time-row">
+        <span id="time-current">0:00</span>
+        <span id="time-total">0:00</span>
+      </div>
+    </div>
+    <div class="row controls">
+      <button class="icon-btn" id="player-prev">⏮</button>
+      <button class="play-main" id="player-play">▶</button>
+      <button class="icon-btn" id="player-next">⏭</button>
+    </div>
+    <div id="queue-label" class="queue-label">Added to queue</div>
+  </div>
+
+  <div id="screen-playlists" class="screen">
+    <div class="app-header">
+      <div class="heading" style="margin:0;">Your Playlists</div>
+      <button class="btn-primary" id="new-playlist-btn" style="width:auto;padding:10px 14px;">New Playlist</button>
+    </div>
+    <div id="playlists-list" class="list"></div>
+    <div id="playlists-empty" class="empty-state hidden">No playlists yet. Create your first one.</div>
+  </div>
+
+  <div id="screen-playlist-detail" class="screen">
+    <div class="row top-back space">
+      <button class="icon-btn" id="playlist-detail-back">←</button>
+      <button class="btn-secondary" id="playlist-edit-name">Edit Name</button>
+    </div>
+    <div id="playlist-detail-title" class="heading">Playlist</div>
+    <div class="detail-actions">
+      <button class="btn-primary" id="playlist-play-all">Play All</button>
+      <button class="btn-secondary" id="playlist-shuffle">Shuffle</button>
+    </div>
+    <div id="playlist-detail-songs" class="song-list"></div>
+    <div id="playlist-detail-empty" class="empty-state hidden">This playlist is empty.</div>
+  </div>
+
+  <div id="screen-profile" class="screen">
+    <div class="heading">Profile</div>
+    <div class="profile-card">
+      <div class="muted" style="font-size:13px;">Logged in as</div>
+      <div id="profile-email" style="font-weight:600;margin-top:4px;"></div>
+      <button class="btn-primary" id="signout-btn" style="margin-top:14px;">Sign Out</button>
+    </div>
+    <div class="version">OpenOdio v1.0</div>
+    <div class="version" style="margin-top:6px;">Audio powered by YouTube. Some ads may play.</div>
+  </div>
+
+  <div id="bottom-nav">
+    <button class="tab-btn active" data-screen="screen-home"><span class="ico">🏠</span><span>Home</span></button>
+    <button class="tab-btn" data-screen="screen-search"><span class="ico">🔍</span><span>Search</span></button>
+    <button class="tab-btn" data-screen="screen-playlists"><span class="ico">📋</span><span>Playlists</span></button>
+    <button class="tab-btn" data-screen="screen-profile"><span class="ico">👤</span><span>Profile</span></button>
+  </div>
+
+  <div id="mini-player">
+    <img id="mini-thumb" class="mini-thumb" src="" alt="Thumb" />
+    <div class="mini-info">
+      <div id="mini-title" class="mini-title"></div>
+      <div id="mini-artist" class="mini-artist"></div>
+    </div>
+    <div class="mini-controls">
+      <button class="icon-btn" id="mini-play">▶</button>
+      <button class="icon-btn" id="mini-next">⏭</button>
+    </div>
+  </div>
+
+  <div id="yt-player" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;"></div>
+
+  <div id="playlist-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="heading" style="font-size:18px;">Add to Playlist</div>
+      <div id="modal-playlist-list"></div>
+      <button class="modal-row" id="modal-create-trigger">+ Create New Playlist</button>
+      <div id="modal-inline-create" class="inline-create">
+        <input id="modal-new-playlist-input" placeholder="Playlist name" />
+        <button class="btn-primary" id="modal-create-confirm" style="width:auto;padding:0 12px;">Create</button>
+      </div>
+      <button class="btn-secondary" id="modal-close" style="width:100%;margin-top:8px;">Cancel</button>
+    </div>
+  </div>
+
+  <div id="create-playlist-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="heading" style="font-size:18px;">Create Playlist</div>
+      <input id="create-playlist-input" placeholder="Playlist name" />
+      <div class="row" style="gap:8px;margin-top:10px;">
+        <button class="btn-primary" id="create-playlist-confirm">Create</button>
+        <button class="btn-secondary" id="create-playlist-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    const YOUTUBE_API_KEY = "AIzaSyCFj1Bd5CByS3YtIV8cme4MA7_Uga01KTM";
+    const SUPABASE_URL = "https://hlqssgwktitnvnhiusji.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhscXNzZ3drdGl0bnZuaGl1c2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODEzOTAsImV4cCI6MjA4OTY1NzM5MH0.46FjhVQ9uvBlRBeJjxbE9t21yFNVhAZyRQ5KPh9pLJk";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const firebaseConfig = {
+    apiKey: "AIzaSyAcxlgg-mxTqJQiUCjtFjiKQ2Hi2EzAqtw",
+    authDomain: "openodio-eca94.firebaseapp.com",
+    projectId: "openodio-eca94",
+    storageBucket: "openodio-eca94.firebasestorage.app",
+    messagingSenderId: "58268925273",
+    appId: "1:58268925273:web:157d9346514f52e14de048"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    console.log("[Auth] Firebase initialized");
+
+    const manifest = {
+      name: "OpenOdio",
+      short_name: "OpenOdio",
+      start_url: "/",
+      display: "standalone",
+      background_color: "#0a0a0a",
+      theme_color: "#1db954",
+      icons: [
+        { src: "https://placehold.co/192x192/1db954/ffffff?text=OO", sizes: "192x192", type: "image/png" },
+        { src: "https://placehold.co/512x512/1db954/ffffff?text=OO", sizes: "512x512", type: "image/png" }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+    const manifestLink = document.createElement("link");
+    manifestLink.rel = "manifest";
+    manifestLink.href = URL.createObjectURL(blob);
+    document.head.appendChild(manifestLink);
+
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => self.clients.claim());
+      self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
+    `;
+    const swBlob = new Blob([swCode], { type: "application/javascript" });
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+    }
+
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+
+    let player;
+    let currentSong = null;
+    let currentQueue = [];
+    let currentIndex = 0;
+    let isPlaying = false;
+    let progressInterval;
+    let authMode = "login";
+    let playlists = [];
+    let selectedPlaylist = null;
+    let pendingSongForAdd = null;
+    let lastNonPlayerScreen = "screen-home";
+
+    const screens = [
+      "screen-login",
+      "screen-home",
+      "screen-search",
+      "screen-playlists",
+      "screen-playlist-detail",
+      "screen-profile"
+    ];
+
+    const el = {
+      authEmail: document.getElementById("auth-email"),
+      authPassword: document.getElementById("auth-password"),
+      authSubmit: document.getElementById("auth-submit"),
+      authError: document.getElementById("auth-error"),
+      tabLogin: document.getElementById("tab-login"),
+      tabSignup: document.getElementById("tab-signup"),
+      bottomNav: document.getElementById("bottom-nav"),
+      homeAvatar: document.getElementById("home-avatar"),
+      homeSearchInput: document.getElementById("home-search-input"),
+      homePlaylistRow: document.getElementById("home-playlist-row"),
+      homePlaylistEmpty: document.getElementById("home-playlist-empty"),
+      searchInput: document.getElementById("search-input"),
+      searchResults: document.getElementById("search-results"),
+      searchLoading: document.getElementById("search-loading"),
+      searchEmpty: document.getElementById("search-empty"),
+      screenPlayer: document.getElementById("screen-player"),
+      playerArtwork: document.getElementById("player-artwork"),
+      playerTitle: document.getElementById("player-title"),
+      playerArtist: document.getElementById("player-artist"),
+      queueLabel: document.getElementById("queue-label"),
+      progressBar: document.getElementById("progress-bar"),
+      progressFill: document.getElementById("progress-fill"),
+      timeCurrent: document.getElementById("time-current"),
+      timeTotal: document.getElementById("time-total"),
+      playerPlay: document.getElementById("player-play"),
+      miniPlayer: document.getElementById("mini-player"),
+      miniThumb: document.getElementById("mini-thumb"),
+      miniTitle: document.getElementById("mini-title"),
+      miniArtist: document.getElementById("mini-artist"),
+      miniPlay: document.getElementById("mini-play"),
+      playlistsList: document.getElementById("playlists-list"),
+      playlistsEmpty: document.getElementById("playlists-empty"),
+      detailTitle: document.getElementById("playlist-detail-title"),
+      detailSongs: document.getElementById("playlist-detail-songs"),
+      detailEmpty: document.getElementById("playlist-detail-empty"),
+      profileEmail: document.getElementById("profile-email"),
+      playlistModal: document.getElementById("playlist-modal"),
+      modalPlaylistList: document.getElementById("modal-playlist-list"),
+      modalInlineCreate: document.getElementById("modal-inline-create"),
+      modalNewPlaylistInput: document.getElementById("modal-new-playlist-input"),
+      createPlaylistModal: document.getElementById("create-playlist-modal"),
+      createPlaylistInput: document.getElementById("create-playlist-input"),
+      toastContainer: document.getElementById("toast-container")
+    };
+
+    function showToast(message, type = "success") {
+      const t = document.createElement("div");
+      t.className = "toast" + (type === "error" ? " error" : "");
+      t.textContent = message;
+      el.toastContainer.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      el.tabLogin.classList.toggle("active", mode === "login");
+      el.tabSignup.classList.toggle("active", mode === "signup");
+      el.authSubmit.textContent = mode === "login" ? "Login" : "Create Account";
+      el.authError.textContent = "";
+    }
+
+    function showScreen(id) {
+      screens.forEach((sid) => document.getElementById(sid).classList.remove("active"));
+      if (id !== "screen-player") {
+        const screen = document.getElementById(id);
+        screen.classList.add("active");
+        if (id !== "screen-login") {
+          lastNonPlayerScreen = id;
+        }
+      }
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.screen === id);
+      });
+    }
+
+    function showMainApp(defaultScreen = "screen-home") {
+      showScreen(defaultScreen);
+      el.bottomNav.style.display = "grid";
+    }
+
+    function hideMainApp() {
+      el.bottomNav.style.display = "none";
+      el.miniPlayer.style.display = "none";
+      showScreen("screen-login");
+    }
+
+    async function loadPlaylists() {
+      const uid = firebase.auth().currentUser.uid;
+      const { data, error } = await supabaseClient
+        .from("playlists")
+        .select("*")
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false });
+      if (error) { showToast("Failed to load playlists", "error"); return []; }
+      return data;
+    }
+
+    async function createPlaylist(name) {
+      const uid = firebase.auth().currentUser.uid;
+      const { data, error } = await supabaseClient
+        .from("playlists")
+        .insert([{ user_id: uid, name: name, songs: [] }])
+        .select()
+        .single();
+      if (error) { showToast("Failed to create playlist", "error"); return null; }
+      showToast("Playlist created");
+      return data;
+    }
+
+    async function addSongToPlaylist(playlistId, song) {
+      const { data: playlist, error: fetchError } = await supabaseClient
+        .from("playlists")
+        .select("songs")
+        .eq("id", playlistId)
+        .single();
+      if (fetchError) { showToast("Failed to fetch playlist", "error"); return false; }
+      const songs = playlist.songs || [];
+      const alreadyExists = songs.some((s) => s.videoId === song.videoId);
+      if (alreadyExists) { showToast("Song already in playlist", "error"); return false; }
+      songs.push(song);
+      const { error } = await supabaseClient
+        .from("playlists")
+        .update({ songs: songs })
+        .eq("id", playlistId);
+      if (error) { showToast("Failed to add song", "error"); return false; }
+      showToast("Song added to playlist");
+      return true;
+    }
+
+    async function removeSongFromPlaylist(playlistId, songVideoId) {
+      const { data: playlist, error: fetchError } = await supabaseClient
+        .from("playlists")
+        .select("songs")
+        .eq("id", playlistId)
+        .single();
+      if (fetchError) { showToast("Failed to fetch playlist", "error"); return; }
+      const songs = (playlist.songs || []).filter((s) => s.videoId !== songVideoId);
+      const { error } = await supabaseClient
+        .from("playlists")
+        .update({ songs: songs })
+        .eq("id", playlistId);
+      if (error) showToast("Failed to remove song", "error");
+    }
+
+    async function deletePlaylist(playlistId) {
+      const { error } = await supabaseClient
+        .from("playlists")
+        .delete()
+        .eq("id", playlistId);
+      if (error) showToast("Failed to delete playlist", "error");
+    }
+
+    async function renamePlaylist(playlistId, newName) {
+      const { error } = await supabaseClient
+        .from("playlists")
+        .update({ name: newName })
+        .eq("id", playlistId);
+      if (error) showToast("Failed to rename playlist", "error");
+    }
+
+    async function getPlaylistById(playlistId) {
+      const { data, error } = await supabaseClient
+        .from("playlists")
+        .select("*")
+        .eq("id", playlistId)
+        .single();
+      if (error) return null;
+      return data;
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60).toString().padStart(2, "0");
+      return m + ":" + s;
+    }
+
+    function updatePlayPauseButtons() {
+      const icon = isPlaying ? "⏸" : "▶";
+      el.playerPlay.textContent = icon;
+      el.miniPlay.textContent = icon;
+    }
+
+    function startProgressInterval() {
+      clearInterval(progressInterval);
+      progressInterval = setInterval(() => {
+        if (!player || typeof player.getCurrentTime !== "function") return;
+        const current = player.getCurrentTime() || 0;
+        const duration = player.getDuration() || 0;
+        if (duration > 0) {
+          const pct = (current / duration) * 100;
+          el.progressFill.style.width = pct + "%";
+          el.timeCurrent.textContent = formatTime(current);
+          el.timeTotal.textContent = formatTime(duration);
+        }
+      }, 500);
+    }
+
+    function updateMediaSession(song) {
+      if (!("mediaSession" in navigator)) return;
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: song.title,
+        artist: song.artist,
+        artwork: [{ src: song.thumbnail, sizes: "300x300", type: "image/jpeg" }]
+      });
+      navigator.mediaSession.setActionHandler("play", () => player && player.playVideo());
+      navigator.mediaSession.setActionHandler("pause", () => player && player.pauseVideo());
+      navigator.mediaSession.setActionHandler("previoustrack", playPrev);
+      navigator.mediaSession.setActionHandler("nexttrack", playNext);
+    }
+
+    function updatePlayerUI(song) {
+      el.playerArtwork.src = song.thumbnail;
+      el.playerTitle.textContent = song.title;
+      el.playerArtist.textContent = song.artist;
+      el.queueLabel.textContent = selectedPlaylist ? "Playing from " + selectedPlaylist.name : "Added to queue";
+      el.timeCurrent.textContent = "0:00";
+      el.timeTotal.textContent = "0:00";
+      el.progressFill.style.width = "0%";
+    }
+
+    function updateMiniPlayer(song) {
+      el.miniThumb.src = song.thumbnail;
+      el.miniTitle.textContent = song.title;
+      el.miniArtist.textContent = song.artist;
+    }
+
+    function showMiniPlayer() {
+      el.miniPlayer.style.display = "flex";
+    }
+
+    function hidePlayerOverlay() {
+      el.screenPlayer.classList.remove("open");
+      el.screenPlayer.style.display = "none";
+    }
+
+    function openPlayerOverlay() {
+      el.screenPlayer.style.display = "flex";
+      requestAnimationFrame(() => el.screenPlayer.classList.add("open"));
+    }
+
+    function playSong(song, queue = [], index = 0) {
+      if (!song || !song.videoId) return;
+      if (!player || typeof player.loadVideoById !== "function") {
+        showToast("Player is still loading", "error");
+        return;
+      }
+      currentSong = song;
+      currentQueue = queue.length ? queue : [song];
+      currentIndex = index;
+      player.loadVideoById(song.videoId);
+      updatePlayerUI(song);
+      updateMiniPlayer(song);
+      showMiniPlayer();
+      updateMediaSession(song);
+    }
+
+    function playNext() {
+      if (!currentQueue.length) return;
+      currentIndex = (currentIndex + 1) % currentQueue.length;
+      playSong(currentQueue[currentIndex], currentQueue, currentIndex);
+    }
+
+    function playPrev() {
+      if (!currentQueue.length) return;
+      currentIndex = (currentIndex - 1 + currentQueue.length) % currentQueue.length;
+      playSong(currentQueue[currentIndex], currentQueue, currentIndex);
+    }
+
+    function togglePlayPause() {
+      if (!player) return;
+      if (isPlaying) {
+        player.pauseVideo();
+      } else {
+        player.playVideo();
+      }
+    }
+
+    function getTotalDuration(songs) {
+      if (!songs || !songs.length) return "";
+      return songs.length + " songs";
+    }
+
+    function buildPlaylistCard(playlist) {
+      const card = document.createElement("button");
+      card.className = "playlist-card";
+      card.innerHTML = `
+        <div class="overlay-play">▶</div>
+        <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(playlist.name || "Playlist")}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px;">${(playlist.songs || []).length} songs</div>
+      `;
+      card.addEventListener("click", () => {
+        selectedPlaylist = playlist;
+        renderPlaylistDetail();
+        showScreen("screen-playlist-detail");
+      });
+      return card;
+    }
+
+    function renderHomePlaylists() {
+      el.homePlaylistRow.innerHTML = "";
+      const createCard = document.createElement("button");
+      createCard.className = "playlist-card";
+      createCard.innerHTML = `<div style="font-size:30px;line-height:1;">＋</div><div style="font-weight:600;margin-top:6px;">New Playlist</div>`;
+      createCard.addEventListener("click", openCreatePlaylistModal);
+      el.homePlaylistRow.appendChild(createCard);
+
+      if (!playlists.length) {
+        el.homePlaylistEmpty.classList.remove("hidden");
+        return;
+      }
+      el.homePlaylistEmpty.classList.add("hidden");
+      playlists.forEach((p) => el.homePlaylistRow.appendChild(buildPlaylistCard(p)));
+    }
+
+    function renderPlaylistsScreen() {
+      el.playlistsList.innerHTML = "";
+      if (!playlists.length) {
+        el.playlistsEmpty.classList.remove("hidden");
+        return;
+      }
+      el.playlistsEmpty.classList.add("hidden");
+      playlists.forEach((p) => {
+        const row = document.createElement("button");
+        row.className = "playlist-list-item";
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:600;">${escapeHtml(p.name || "Playlist")}</div>
+            <div class="muted" style="font-size:12px;">${(p.songs || []).length} songs · ${getTotalDuration(p.songs)}</div>
+          </div>
+          <div class="muted">→</div>
+        `;
+        row.addEventListener("click", () => {
+          selectedPlaylist = p;
+          renderPlaylistDetail();
+          showScreen("screen-playlist-detail");
+        });
+        el.playlistsList.appendChild(row);
+      });
+    }
+
+    function renderPlaylistDetail() {
+      const p = selectedPlaylist;
+      if (!p) return;
+      el.detailTitle.textContent = p.name || "Playlist";
+      el.detailSongs.innerHTML = "";
+      const songs = p.songs || [];
+      if (!songs.length) {
+        el.detailEmpty.classList.remove("hidden");
+      } else {
+        el.detailEmpty.classList.add("hidden");
+      }
+      songs.forEach((song, i) => {
+        const row = document.createElement("div");
+        row.className = "song-row";
+        row.innerHTML = `
+          <div class="song-num">${i + 1}</div>
+          <img class="thumb" src="${song.thumbnail}" alt="">
+          <div>
+            <div class="song-title">${escapeHtml(song.title)}</div>
+            <div class="song-artist">${escapeHtml(song.artist)}</div>
+          </div>
+          <button class="icon-btn">🗑</button>
+        `;
+        row.addEventListener("click", (e) => {
+          if (e.target.closest("button")) return;
+          addRipple(row, e);
+          selectedPlaylist = p;
+          playSong(song, songs, i);
+        });
+        row.querySelector("button").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          try {
+            await removeSongFromPlaylist(p.id, song.videoId);
+            showToast("Removed from playlist");
+            await refreshPlaylists(true);
+          } catch (_) {
+            showToast("Unable to remove song", "error");
+          }
+        });
+        el.detailSongs.appendChild(row);
+      });
+    }
+
+    function addRipple(target, event) {
+      const rect = target.getBoundingClientRect();
+      const ripple = document.createElement("span");
+      const size = Math.max(rect.width, rect.height);
+      ripple.className = "ripple";
+      ripple.style.width = ripple.style.height = size + "px";
+      ripple.style.left = event.clientX - rect.left - size / 2 + "px";
+      ripple.style.top = event.clientY - rect.top - size / 2 + "px";
+      target.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 500);
+    }
+
+    function escapeHtml(str) {
+      return String(str || "").replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[m]));
+    }
+
+    async function runSearch(query) {
+      if (!query) return;
+      showScreen("screen-search");
+      el.searchInput.value = query;
+      el.searchResults.innerHTML = "";
+      el.searchEmpty.classList.add("hidden");
+      el.searchLoading.classList.remove("hidden");
+      try {
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=25&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const items = (data.items || []).map((item) => ({
+          videoId: item.id.videoId,
+          title: item.snippet.title,
+          artist: item.snippet.channelTitle,
+          thumbnail: item.snippet.thumbnails.medium.url
+        })).filter((s) => s.videoId);
+        renderSearchResults(items);
+        if (!items.length) el.searchEmpty.classList.remove("hidden");
+      } catch (_) {
+        showToast("Search failed", "error");
+      } finally {
+        el.searchLoading.classList.add("hidden");
+      }
+    }
+
+    function renderSearchResults(items) {
+      el.searchResults.innerHTML = "";
+      items.forEach((song, idx) => {
+        const row = document.createElement("div");
+        row.className = "result-item";
+        row.innerHTML = `
+          <img class="thumb" src="${song.thumbnail}" alt="">
+          <div>
+            <div class="song-title">${escapeHtml(song.title)}</div>
+            <div class="song-artist">${escapeHtml(song.artist)}</div>
+          </div>
+          <button class="icon-btn">＋</button>
+        `;
+        row.addEventListener("click", (e) => {
+          if (e.target.closest("button")) return;
+          addRipple(row, e);
+          selectedPlaylist = null;
+          playSong(song, items, idx);
+        });
+        row.querySelector("button").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await openAddToPlaylistModal(song);
+        });
+        el.searchResults.appendChild(row);
+      });
+    }
+
+    async function openAddToPlaylistModal(song) {
+      pendingSongForAdd = song;
+      el.modalInlineCreate.style.display = "none";
+      el.modalNewPlaylistInput.value = "";
+      el.modalPlaylistList.innerHTML = "";
+      const modalPlaylists = await loadPlaylists();
+      if (!modalPlaylists.length) {
+        const empty = document.createElement("div");
+        empty.className = "muted";
+        empty.textContent = "No playlists yet";
+        empty.style.marginBottom = "10px";
+        el.modalPlaylistList.appendChild(empty);
+      } else {
+        modalPlaylists.forEach((p) => {
+          const btn = document.createElement("button");
+          btn.className = "modal-row";
+          btn.textContent = p.name + " (" + (p.songs || []).length + " songs)";
+          btn.addEventListener("click", async () => {
+            try {
+              const added = await addSongToPlaylist(p.id, pendingSongForAdd);
+              if (!added) return;
+              closeModal(el.playlistModal);
+              await refreshPlaylists(selectedPlaylist && selectedPlaylist.id === p.id);
+            } catch (_) {
+              showToast("Failed to add song", "error");
+            }
+          });
+          el.modalPlaylistList.appendChild(btn);
+        });
+      }
+      openModal(el.playlistModal);
+    }
+
+    function openModal(modal) {
+      modal.style.display = "flex";
+      requestAnimationFrame(() => modal.classList.add("show"));
+    }
+
+    function closeModal(modal) {
+      modal.classList.remove("show");
+      setTimeout(() => { modal.style.display = "none"; }, 200);
+    }
+
+    function openCreatePlaylistModal() {
+      el.createPlaylistInput.value = "";
+      openModal(el.createPlaylistModal);
+      setTimeout(() => el.createPlaylistInput.focus(), 50);
+    }
+
+    async function refreshPlaylists(reloadDetail = false) {
+      try {
+        playlists = await loadPlaylists();
+      } catch (_) {
+        playlists = [];
+      }
+      renderHomePlaylists();
+      renderPlaylistsScreen();
+      if (reloadDetail && selectedPlaylist) {
+        const updated = playlists.find((p) => p.id === selectedPlaylist.id);
+        if (updated) {
+          selectedPlaylist = updated;
+          renderPlaylistDetail();
+        }
+      }
+    }
+
+    function wireEvents() {
+      el.tabLogin.addEventListener("click", () => setAuthMode("login"));
+      el.tabSignup.addEventListener("click", () => setAuthMode("signup"));
+      el.authSubmit.addEventListener("click", async () => {
+        const email = el.authEmail.value.trim();
+        const password = el.authPassword.value;
+        el.authError.textContent = "";
+        console.log("[Auth] Submit clicked", { mode: authMode, email });
+        if (!email || !password) {
+          el.authError.textContent = "Email and password are required";
+          console.warn("[Auth] Missing email or password");
+          return;
+        }
+        el.authSubmit.disabled = true;
+        const prevLabel = el.authSubmit.textContent;
+        el.authSubmit.textContent = authMode === "login" ? "Logging in..." : "Creating account...";
+        try {
+          if (authMode === "login") {
+            console.log("[Auth] Calling signInWithEmailAndPassword");
+            const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
+            console.log("[Auth] Login success", { uid: cred.user && cred.user.uid });
+          } else {
+            console.log("[Auth] Calling createUserWithEmailAndPassword");
+            const cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+            console.log("[Auth] Signup success", { uid: cred.user && cred.user.uid });
+          }
+        } catch (e) {
+          console.error("[Auth] Submit failed", e);
+          el.authError.textContent = e.message || "Authentication failed";
+        } finally {
+          el.authSubmit.disabled = false;
+          el.authSubmit.textContent = prevLabel;
+        }
+      });
+
+      document.getElementById("home-search-btn").addEventListener("click", () => runSearch(el.homeSearchInput.value.trim()));
+      el.homeSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") runSearch(el.homeSearchInput.value.trim());
+      });
+      document.getElementById("search-btn").addEventListener("click", () => runSearch(el.searchInput.value.trim()));
+      el.searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") runSearch(el.searchInput.value.trim());
+      });
+      document.getElementById("search-back").addEventListener("click", () => showScreen(lastNonPlayerScreen || "screen-home"));
+
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => showScreen(btn.dataset.screen));
+      });
+
+      document.getElementById("player-collapse").addEventListener("click", hidePlayerOverlay);
+      el.miniPlayer.addEventListener("click", (e) => {
+        if (e.target.closest("#mini-play") || e.target.closest("#mini-next")) return;
+        openPlayerOverlay();
+      });
+      document.getElementById("mini-next").addEventListener("click", (e) => { e.stopPropagation(); playNext(); });
+      el.miniPlay.addEventListener("click", (e) => { e.stopPropagation(); togglePlayPause(); });
+      document.getElementById("player-prev").addEventListener("click", playPrev);
+      document.getElementById("player-next").addEventListener("click", playNext);
+      el.playerPlay.addEventListener("click", togglePlayPause);
+      document.getElementById("player-add").addEventListener("click", async () => {
+        if (!currentSong) return;
+        await openAddToPlaylistModal(currentSong);
+      });
+      document.getElementById("player-heart").addEventListener("click", () => showToast("Liked"));
+
+      el.progressBar.addEventListener("click", (e) => {
+        if (!player || !player.getDuration) return;
+        const rect = el.progressBar.getBoundingClientRect();
+        const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        player.seekTo(pct * player.getDuration(), true);
+      });
+      let dragging = false;
+      const seekWithClientX = (x) => {
+        if (!player || !player.getDuration) return;
+        const rect = el.progressBar.getBoundingClientRect();
+        const pct = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+        el.progressFill.style.width = (pct * 100) + "%";
+        player.seekTo(pct * player.getDuration(), true);
+      };
+      el.progressBar.addEventListener("pointerdown", (e) => {
+        dragging = true;
+        seekWithClientX(e.clientX);
+      });
+      window.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        seekWithClientX(e.clientX);
+      });
+      window.addEventListener("pointerup", () => { dragging = false; });
+
+      document.getElementById("new-playlist-btn").addEventListener("click", openCreatePlaylistModal);
+      document.getElementById("create-playlist-confirm").addEventListener("click", async () => {
+        const name = el.createPlaylistInput.value.trim();
+        if (!name) return showToast("Enter playlist name", "error");
+        try {
+          await createPlaylist(name);
+          closeModal(el.createPlaylistModal);
+          await refreshPlaylists();
+        } catch (_) {
+          showToast("Failed to create playlist", "error");
+        }
+      });
+      document.getElementById("create-playlist-cancel").addEventListener("click", () => closeModal(el.createPlaylistModal));
+
+      document.getElementById("modal-create-trigger").addEventListener("click", () => {
+        el.modalInlineCreate.style.display = "flex";
+        setTimeout(() => el.modalNewPlaylistInput.focus(), 40);
+      });
+      document.getElementById("modal-create-confirm").addEventListener("click", async () => {
+        const name = el.modalNewPlaylistInput.value.trim();
+        if (!name) return showToast("Enter playlist name", "error");
+        try {
+          const created = await createPlaylist(name);
+          await refreshPlaylists();
+          if (pendingSongForAdd) {
+            if (created) {
+              await addSongToPlaylist(created.id, pendingSongForAdd);
+            }
+          }
+          await refreshPlaylists(selectedPlaylist && created && selectedPlaylist.id === created.id);
+          closeModal(el.playlistModal);
+        } catch (_) {
+          showToast("Could not create playlist", "error");
+        }
+      });
+      document.getElementById("modal-close").addEventListener("click", () => closeModal(el.playlistModal));
+      el.playlistModal.addEventListener("click", (e) => { if (e.target === el.playlistModal) closeModal(el.playlistModal); });
+      el.createPlaylistModal.addEventListener("click", (e) => { if (e.target === el.createPlaylistModal) closeModal(el.createPlaylistModal); });
+
+      document.getElementById("playlist-detail-back").addEventListener("click", () => showScreen("screen-playlists"));
+      document.getElementById("playlist-play-all").addEventListener("click", () => {
+        if (!selectedPlaylist || !(selectedPlaylist.songs || []).length) return;
+        playSong(selectedPlaylist.songs[0], selectedPlaylist.songs, 0);
+      });
+      document.getElementById("playlist-shuffle").addEventListener("click", () => {
+        if (!selectedPlaylist || !(selectedPlaylist.songs || []).length) return;
+        const arr = [...selectedPlaylist.songs];
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        selectedPlaylist = { ...selectedPlaylist, songs: arr };
+        playSong(arr[0], arr, 0);
+      });
+      document.getElementById("playlist-edit-name").addEventListener("click", async () => {
+        if (!selectedPlaylist) return;
+        const name = window.prompt("Playlist name", selectedPlaylist.name || "Playlist");
+        if (!name) return;
+        try {
+          await renamePlaylist(selectedPlaylist.id, name.trim());
+          showToast("Playlist renamed");
+          await refreshPlaylists(true);
+        } catch (_) {
+          showToast("Rename failed", "error");
+        }
+      });
+
+      document.getElementById("signout-btn").addEventListener("click", async () => {
+        try {
+          await auth.signOut();
+          showToast("Signed out");
+        } catch (_) {
+          showToast("Sign out failed", "error");
+        }
+      });
+
+      window.addEventListener("offline", () => showToast("No internet connection", "error"));
+      window.addEventListener("online", () => showToast("Back online", "success"));
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        isPlaying = true;
+        updatePlayPauseButtons();
+        startProgressInterval();
+      }
+      if (event.data === YT.PlayerState.PAUSED) {
+        isPlaying = false;
+        updatePlayPauseButtons();
+      }
+      if (event.data === YT.PlayerState.ENDED) {
+        playNext();
+      }
+    }
+
+    window.onYouTubeIframeAPIReady = function () {
+      player = new YT.Player("yt-player", {
+        height: "1",
+        width: "1",
+        playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, fs: 0 },
+        events: { onReady: () => {}, onStateChange: onPlayerStateChange }
+      });
+    };
+
+    auth.onAuthStateChanged(async (user) => {
+      console.log("[Auth] onAuthStateChanged", user ? { uid: user.uid, email: user.email } : null);
+      if (!user) {
+        hidePlayerOverlay();
+        hideMainApp();
+        setAuthMode("login");
+        el.authPassword.value = "";
+        console.log("[Auth] No user, showing login screen");
+        return;
+      }
+      try {
+        el.homeAvatar.textContent = (user.email || "U").slice(0, 1).toUpperCase();
+        el.profileEmail.textContent = user.email || "";
+        showMainApp("screen-home");
+        console.log("[Auth] User detected, navigating to home");
+        await refreshPlaylists();
+        console.log("[Auth] Home data refresh complete");
+      } catch (e) {
+        console.error("[Auth] Post-login UI setup failed", e);
+        showMainApp("screen-home");
+        showToast("Logged in, but failed to load some data", "error");
+      }
+    });
+
+    wireEvents();
+  </script>
+</body>
+</html>
