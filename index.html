@@ -321,17 +321,36 @@
     const aLink = document.createElement("link"); aLink.rel="apple-touch-icon"; aLink.href=iconUrl; document.head.appendChild(aLink);
     if("serviceWorker"in navigator) navigator.serviceWorker.register(URL.createObjectURL(new Blob([`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>new Response('Offline'))));`],{type:"application/javascript"}))).catch(()=>{});
 
-    // Piped API instances
+    // Piped API instances — updated March 2026
     const PIPED_INSTANCES = [
       "https://pipedapi.kavin.rocks",
-      "https://piped-api.garudalinux.org",
-      "https://api.piped.projectsegfau.lt",
-      "https://pipedapi.in.projectsegfau.lt",
-      "https://pipedapi.tokhmi.xyz",
-      "https://piped-api.privacy.com.de"
+      "https://pipedapi-libre.kavin.rocks",
+      "https://pipedapi.adminforge.de",
+      "https://api.piped.yt",
+      "https://piped-api.privacy.com.de",
+      "https://pipedapi.leptons.xyz",
+      "https://pipedapi.nosebs.ru",
+      "https://pipedapi.drgns.space"
     ];
 
+    // CORS proxy fallback — used if direct fetch fails
+    const CORS_PROXIES = [
+      "https://corsproxy.io/?",
+      "https://api.allorigins.win/raw?url="
+    ];
+
+    async function fetchWithCorsProxy(url) {
+      for (const proxy of CORS_PROXIES) {
+        try {
+          const res = await fetch(proxy + encodeURIComponent(url), { signal: AbortSignal.timeout(8000) });
+          if (res.ok) return res;
+        } catch(e) { continue; }
+      }
+      return null;
+    }
+
     async function getAudioUrl(videoId) {
+      // Try direct fetch first
       for (const instance of PIPED_INSTANCES) {
         try {
           const res = await fetch(`${instance}/streams/${videoId}`, { signal: AbortSignal.timeout(6000) });
@@ -343,7 +362,18 @@
           if (videoStreams.length > 0) return videoStreams[0].url;
         } catch(e) { console.log(`[Piped] ${instance} failed`); continue; }
       }
-      throw new Error("All Piped instances failed");
+      // Try with CORS proxy
+      console.log("[Piped] Trying CORS proxy fallback...");
+      for (const instance of PIPED_INSTANCES.slice(0, 3)) {
+        try {
+          const res = await fetchWithCorsProxy(`${instance}/streams/${videoId}`);
+          if (!res) continue;
+          const data = await res.json();
+          const audioStreams = (data.audioStreams||[]).filter(s=>s.url&&s.mimeType&&s.mimeType.includes("audio")).sort((a,b)=>(b.bitrate||0)-(a.bitrate||0));
+          if (audioStreams.length > 0) { console.log(`[Piped] Got audio via proxy from ${instance}`); return audioStreams[0].url; }
+        } catch(e) { continue; }
+      }
+      throw new Error("All Piped instances and proxies failed");
     }
 
     const audioPlayer = document.getElementById("audio-player");
