@@ -655,6 +655,9 @@
     let selectedPlaylist = null;
     let pendingSongForAdd = null;
     let lastNonPlayerScreen = "screen-home";
+    let wakeLock = null;
+    let silentAudio = null;
+    let bgAudioInitialized = false;
 
     const screens = [
       "screen-login",
@@ -876,6 +879,46 @@
       navigator.mediaSession.setActionHandler("nexttrack", playNext);
     }
 
+    function initializeMediaSessionEarly() {
+      if (!("mediaSession" in navigator)) return;
+      if (navigator.mediaSession.metadata) return;
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "OpenOdio",
+        artist: "Ready to play",
+        artwork: [{ src: "https://placehold.co/300x300/1db954/ffffff?text=OO", sizes: "300x300", type: "image/png" }]
+      });
+      navigator.mediaSession.setActionHandler("play", () => player && player.playVideo());
+      navigator.mediaSession.setActionHandler("pause", () => player && player.pauseVideo());
+      navigator.mediaSession.setActionHandler("previoustrack", playPrev);
+      navigator.mediaSession.setActionHandler("nexttrack", playNext);
+    }
+
+    async function initializeBackgroundAudioSupport() {
+      if (bgAudioInitialized) return;
+      bgAudioInitialized = true;
+      initializeMediaSessionEarly();
+      try {
+        silentAudio = new Audio();
+        silentAudio.src = "data:audio/mpeg;base64,SUQzAwAAAAAAF1RTU0UAAAAPAAADTGF2ZjU4LjQ1LjEwNAAAAAAAAAAAAAAA//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABJgD//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjkxAAAAAAAAAAAAAAAAJAYAAAAAAAAAAAEma2c4AAAAAAAAAAAAAAAAAAAA//uQxAADBzQAUAAAANIAAAAAExBTUUzLjk5LjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+        silentAudio.loop = true;
+        silentAudio.playsInline = true;
+        silentAudio.muted = true;
+        await silentAudio.play();
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
+    async function requestWakeLockOnPlay() {
+      if ("wakeLock" in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request("screen");
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    }
+
     function updatePlayerUI(song) {
       el.playerArtwork.src = song.thumbnail;
       el.playerTitle.textContent = song.title;
@@ -934,11 +977,13 @@
       playSong(currentQueue[currentIndex], currentQueue, currentIndex);
     }
 
-    function togglePlayPause() {
+    async function togglePlayPause() {
       if (!player) return;
       if (isPlaying) {
         player.pauseVideo();
       } else {
+        await initializeBackgroundAudioSupport();
+        await requestWakeLockOnPlay();
         player.playVideo();
       }
     }
@@ -1245,10 +1290,10 @@
         openPlayerOverlay();
       });
       document.getElementById("mini-next").addEventListener("click", (e) => { e.stopPropagation(); playNext(); });
-      el.miniPlay.addEventListener("click", (e) => { e.stopPropagation(); togglePlayPause(); });
+      el.miniPlay.addEventListener("click", async (e) => { e.stopPropagation(); await togglePlayPause(); });
       document.getElementById("player-prev").addEventListener("click", playPrev);
       document.getElementById("player-next").addEventListener("click", playNext);
-      el.playerPlay.addEventListener("click", togglePlayPause);
+      el.playerPlay.addEventListener("click", async () => { await togglePlayPause(); });
       document.getElementById("player-add").addEventListener("click", async () => {
         if (!currentSong) return;
         await openAddToPlaylistModal(currentSong);
@@ -1357,6 +1402,10 @@
 
       window.addEventListener("offline", () => showToast("No internet connection", "error"));
       window.addEventListener("online", () => showToast("Back online", "success"));
+      window.addEventListener("pointerdown", async () => {
+        initializeMediaSessionEarly();
+        await initializeBackgroundAudioSupport();
+      }, { once: true });
     }
 
     function onPlayerStateChange(event) {
