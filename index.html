@@ -680,6 +680,7 @@
 
       // Show YouTube container so Safari treats it as active media from youtube.com
       el.ytContainer.style.display = "block";
+      startAudioContextKeepAlive();
 
       player.loadVideoById(song.videoId);
       updatePlayerUI(song);
@@ -1086,6 +1087,26 @@
         showMainApp("screen-home");
       }
     });
+    // Web Audio API keep-alive for background playback
+let audioCtx = null;
+let gainNode = null;
+let oscillator = null;
+
+function startAudioContextKeepAlive() {
+  try {
+    if (audioCtx) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContext();
+    oscillator = audioCtx.createOscillator();
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0.001;
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+  } catch(e) {
+    console.log('AudioContext failed', e);
+  }
+}
 
     wireEvents();
   </script>
