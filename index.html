@@ -123,21 +123,21 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* YouTube IFrame container — covers full screen, behind player UI */
-    #yt-container {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      z-index: 5;
-      background: #000;
-      display: none;
-      pointer-events: none;
-    }
-    #yt-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      opacity: 0;
-    }
+#yt-container {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+}
+#yt-container iframe {
+  width: 1px;
+  height: 1px;
+  border: none;
+}
 
     #screen-player {
       z-index: 30;
@@ -972,8 +972,8 @@
       document.getElementById("search-btn").addEventListener("click", () => runSearch(el.searchInput.value.trim()));
       el.searchInput.addEventListener("keydown", e => { if (e.key === "Enter") runSearch(el.searchInput.value.trim()); });
       document.getElementById("search-back").addEventListener("click", () => showScreen(lastNonPlayerScreen || "screen-home"));
-
-      document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => showScreen(btn.dataset.screen)));
+      
+      document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{hidePlayerOverlay();showScreen(b.dataset.screen);}));
 
       document.getElementById("player-collapse").addEventListener("click", hidePlayerOverlay);
       el.miniPlayer.addEventListener("click", e => {
