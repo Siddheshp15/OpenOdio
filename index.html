@@ -539,7 +539,7 @@
     function hideMainApp() {
       el.bottomNav.style.display = "none";
       el.miniPlayer.style.display = "none";
-      el.ytContainer.style.display = "none";
+      
       showScreen("screen-login");
     }
 
@@ -679,7 +679,7 @@
       currentIndex = index;
 
       // Show YouTube container so Safari treats it as active media from youtube.com
-      el.ytContainer.style.display = "block";
+      
       startAudioContextKeepAlive();
 
       player.loadVideoById(song.videoId);
